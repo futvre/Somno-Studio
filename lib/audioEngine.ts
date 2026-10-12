@@ -85,7 +85,7 @@ export class SomnoAudioEngine {
 
   public startChannel(config: ChannelConfig, initialVol: number, initialPan: number) {
     if (!this.ctx || !this.masterGain) this.init();
-    if (!this.ctx) return;
+    if (!this.ctx || !this.masterGain) return;
 
     if (this.channelNodes.has(config.id)) {
       this.stopChannel(config.id);
