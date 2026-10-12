@@ -13,7 +13,6 @@ module.exports = {
           card: "#12141c",
           border: "#1f2430",
           accent: "#3b82f6",
-          glow: "rgba(59, 130, 246, 0.15)"
         }
       }
     },
