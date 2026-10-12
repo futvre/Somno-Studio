@@ -51,7 +51,7 @@ export default function SomnoStudio() {
       const newMeters: Record<string, number> = {};
       CHANNELS_CONFIG.forEach(ch => {
         if (channels[ch.id]?.active && channels[ch.id]?.volume > 0) {
-          newMeters[ch.id] = audioEngine.getMeterLevel(ch.id);
+          newMeters[ch.id] = audioEngine.getMeterLevel(ch.id, channels[ch.id].volume);
         } else {
           newMeters[ch.id] = 0;
         }
@@ -74,7 +74,7 @@ export default function SomnoStudio() {
       setTimerRemaining(prev => {
         if (prev === null || prev <= 1) {
           setIsPlaying(false);
-          audioEngine.setMasterVolume(0);
+          audioEngine.stopAll();
           setSleepTimer(null);
           if (timerRef.current) clearInterval(timerRef.current);
           return null;
@@ -94,23 +94,28 @@ export default function SomnoStudio() {
     setIsPlaying(nextState);
 
     if (nextState) {
-      audioEngine.setMasterVolume(masterVol);
       CHANNELS_CONFIG.forEach(ch => {
         const state = channels[ch.id];
-        if (state.active) {
-          audioEngine.startChannel(ch, state.volume, 0);
+        if (state.active && state.volume > 0) {
+          audioEngine.startChannel(ch, state.volume, masterVol);
         }
       });
     } else {
-      CHANNELS_CONFIG.forEach(ch => {
-        audioEngine.stopChannel(ch.id);
-      });
+      audioEngine.stopAll();
     }
   };
 
   const handleMasterVolChange = (val: number) => {
     setMasterVol(val);
     audioEngine.setMasterVolume(val);
+    if (isPlaying) {
+      CHANNELS_CONFIG.forEach(ch => {
+        const state = channels[ch.id];
+        if (state.active) {
+          audioEngine.setChannelVolume(ch.id, state.volume, val);
+        }
+      });
+    }
   };
 
   const handleChannelVolChange = (id: string, val: number) => {
@@ -122,9 +127,9 @@ export default function SomnoStudio() {
       const config = CHANNELS_CONFIG.find(c => c.id === id);
       if (config) {
         if (!channels[id].active && val > 0) {
-          audioEngine.startChannel(config, val, 0);
+          audioEngine.startChannel(config, val, masterVol);
         } else {
-          audioEngine.setChannelVolume(id, val);
+          audioEngine.setChannelVolume(id, val, masterVol);
         }
       }
     }
@@ -144,7 +149,7 @@ export default function SomnoStudio() {
       const config = CHANNELS_CONFIG.find(c => c.id === id);
       if (config) {
         if (newActive) {
-          audioEngine.startChannel(config, newVol, 0);
+          audioEngine.startChannel(config, newVol, masterVol);
         } else {
           audioEngine.stopChannel(id);
         }
@@ -159,13 +164,15 @@ export default function SomnoStudio() {
       ...prev,
       [id]: { ...prev[id], muted: newMuted }
     }));
-    audioEngine.setChannelMute(id, newMuted === 1);
+    audioEngine.setChannelMute(id, newMuted === 1, current.volume, masterVol);
   };
 
   const applyPreset = (presetName: string) => {
     audioEngine.init();
     setActivePreset(presetName);
     setIsPlaying(true);
+
+    audioEngine.stopAll();
 
     const newChannels = { ...channels };
     CHANNELS_CONFIG.forEach(ch => {
@@ -182,18 +189,11 @@ export default function SomnoStudio() {
       newChannels[id] = { active: true, volume: 0.7, muted: 0 };
       const config = CHANNELS_CONFIG.find(c => c.id === id);
       if (config) {
-        audioEngine.startChannel(config, 0.7, 0);
-      }
-    });
-
-    CHANNELS_CONFIG.forEach(ch => {
-      if (!targetIds.includes(ch.id)) {
-        audioEngine.stopChannel(ch.id);
+        audioEngine.startChannel(config, 0.7, masterVol);
       }
     });
 
     setChannels(newChannels);
-    audioEngine.setMasterVolume(masterVol);
   };
 
   const formatTime = (secs: number) => {
@@ -203,16 +203,16 @@ export default function SomnoStudio() {
   };
 
   return (
-    <main className="min-h-screen w-screen flex flex-col bg-[#08090d] text-gray-200 select-none">
+    <main className="min-h-screen w-screen flex flex-col bg-[#08090d] text-gray-200 select-none overflow-x-hidden">
       {/* Header / Master Suite */}
-      <header className="h-16 px-4 md:px-6 border-b border-[#1f2430] bg-[#0c0e15] flex items-center justify-between shrink-0 sticky top-0 z-20">
+      <header className="h-16 px-4 md:px-6 border-b border-[#1f2430] bg-[#0c0e15] flex items-center justify-between shrink-0 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-lg shadow-blue-500/10">
             <Sliders className="w-5 h-5" />
           </div>
           <div>
             <h1 className="text-base md:text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              Somno Studio <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v1.0</span>
+              Somno Studio <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v1.1</span>
             </h1>
             <p className="text-[11px] md:text-xs text-gray-400 hidden sm:block">Ambient Audio Mixing Console</p>
           </div>
@@ -297,8 +297,8 @@ export default function SomnoStudio() {
         </div>
       </header>
 
-      {/* 11 Channel Strips Grid Container */}
-      <div className="flex-1 p-3 md:p-6 overflow-y-auto flex items-center justify-center">
+      {/* 11 Channel Strips Responsive Grid Container */}
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto flex items-center justify-center">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-3 w-full max-w-[1600px] my-auto">
           {CHANNELS_CONFIG.map(ch => {
             const state = channels[ch.id] || { volume: 0, muted: 0, active: false };
@@ -377,10 +377,10 @@ export default function SomnoStudio() {
 
       {/* Footer */}
       <footer className="h-10 px-4 md:px-6 border-t border-[#1f2430] bg-[#0c0e15] flex items-center justify-between text-[11px] md:text-xs text-gray-500 shrink-0">
-        <div>Somno Studio © 2026 — Web Audio API Synthesizer</div>
+        <div>Somno Studio © 2026 — Real Ambient Recordings</div>
         <div className="flex items-center gap-4">
-          <span className="hidden sm:inline">Zero MP3s • Instant Playback • Offline Ready</span>
-          <span className="text-blue-400 font-mono">v1.0.0</span>
+          <span className="hidden sm:inline">Real Audio Samples • Responsive Design</span>
+          <span className="text-blue-400 font-mono">v1.1.0</span>
         </div>
       </footer>
     </main>
