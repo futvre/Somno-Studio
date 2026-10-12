@@ -6,9 +6,10 @@ import { CHANNELS_CONFIG, audioEngine } from '@/lib/audioEngine';
 
 interface ChannelState {
   volume: number;
-  muted: number; // 0 or 1
+  muted: number;
   active: boolean;
 }
+
 export default function SomnoStudio() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [masterVol, setMasterVol] = useState<number>(0.8);
@@ -26,7 +27,6 @@ export default function SomnoStudio() {
   const [meters, setMeters] = useState<Record<string, number>>({});
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('somno_studio_state');
     if (saved) {
@@ -38,12 +38,10 @@ export default function SomnoStudio() {
     }
   }, []);
 
-  // Save to localStorage on change
   useEffect(() => {
     localStorage.setItem('somno_studio_state', JSON.stringify({ channels, masterVol }));
   }, [channels, masterVol]);
 
-  // VU Meters animation loop
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
@@ -60,7 +58,6 @@ export default function SomnoStudio() {
     return () => clearInterval(interval);
   }, [isPlaying, channels]);
 
-  // Sleep Timer countdown
   useEffect(() => {
     if (sleepTimer === null) {
       setTimerRemaining(null);
@@ -88,7 +85,6 @@ export default function SomnoStudio() {
   }, [sleepTimer]);
 
   const toggleMasterPlay = () => {
-    audioEngine.init();
     const nextState = !isPlaying;
     setIsPlaying(nextState);
 
@@ -106,7 +102,6 @@ export default function SomnoStudio() {
 
   const handleMasterVolChange = (val: number) => {
     setMasterVol(val);
-    audioEngine.setMasterVolume(val);
     if (isPlaying) {
       CHANNELS_CONFIG.forEach(ch => {
         const state = channels[ch.id];
@@ -167,10 +162,8 @@ export default function SomnoStudio() {
   };
 
   const applyPreset = (presetName: string) => {
-    audioEngine.init();
     setActivePreset(presetName);
     setIsPlaying(true);
-
     audioEngine.stopAll();
 
     const newChannels = { ...channels };
@@ -202,50 +195,32 @@ export default function SomnoStudio() {
   };
 
   return (
-    <main className="min-h-screen w-screen flex flex-col bg-[#08090d] text-gray-200 select-none overflow-x-hidden">
+    <main className="min-h-screen w-full flex flex-col bg-[#08090d] text-gray-200 select-none overflow-x-hidden">
       {/* Header / Master Suite */}
-      <header className="h-16 px-4 md:px-6 border-b border-[#1f2430] bg-[#0c0e15] flex items-center justify-between shrink-0 sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-lg shadow-blue-500/10">
-            <Sliders className="w-5 h-5" />
+      <header className="h-16 px-3 md:px-6 border-b border-[#1f2430] bg-[#0c0e15] flex items-center justify-between shrink-0 sticky top-0 z-30">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-lg shadow-blue-500/10">
+            <Sliders className="w-4 h-4 md:w-5 md:h-5" />
           </div>
           <div>
-            <h1 className="text-base md:text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              Somno Studio <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v1.1</span>
+            <h1 className="text-sm md:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+              Somno Studio <span className="text-[10px] md:text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v1.2</span>
             </h1>
-            <p className="text-[11px] md:text-xs text-gray-400 hidden sm:block">Ambient Audio Mixing Console</p>
+            <p className="text-[11px] text-gray-400 hidden sm:block">Ambient Audio Mixing Console</p>
           </div>
         </div>
 
-        {/* Master Play / Presets / Sleep Timer */}
+        {/* Controls: Timer, Master Vol, Master Play */}
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Quick Presets */}
-          <div className="hidden xl:flex items-center gap-1.5 bg-[#12141c] p-1 rounded-xl border border-[#1f2430]">
-            <span className="text-xs text-gray-400 px-2 font-medium">Presets:</span>
-            {['Heavy Rain', 'Deep Sleep', 'Cabin Fire', 'Reset'].map(p => (
-              <button
-                key={p}
-                onClick={() => applyPreset(p)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                  activePreset === p
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-gray-400 hover:text-white hover:bg-[#1a1e29]'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-
           {/* Sleep Timer */}
           <div className="flex items-center gap-1 bg-[#12141c] p-1 rounded-xl border border-[#1f2430]">
-            <Clock className="w-3.5 h-3.5 text-gray-400 ml-1 md:ml-2 hidden sm:block" />
+            <Clock className="w-3.5 h-3.5 text-gray-400 ml-1 hidden sm:block" />
             <span className="text-xs text-gray-400 font-medium hidden sm:inline">Timer:</span>
             {[15, 30, 45, 60].map(m => (
               <button
                 key={m}
                 onClick={() => setSleepTimer(sleepTimer === m ? null : m)}
-                className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                className={`px-1.5 md:px-2 py-1 rounded-lg text-[11px] md:text-xs font-medium transition-all ${
                   sleepTimer === m
                     ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                     : 'text-gray-400 hover:text-white hover:bg-[#1a1e29]'
@@ -258,7 +233,7 @@ export default function SomnoStudio() {
               <button
                 onClick={() => setSleepTimer(null)}
                 title="Κλείσιμο Timer"
-                className="flex items-center gap-1 bg-purple-500/20 border border-purple-500/40 px-2 py-0.5 rounded-lg text-xs font-mono text-purple-300 animate-pulse hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40 transition-all"
+                className="flex items-center gap-1 bg-purple-500/25 border border-purple-500/40 px-1.5 py-0.5 rounded-lg text-[11px] font-mono text-purple-300 animate-pulse hover:bg-red-500/20 transition-all"
               >
                 <span>{formatTime(timerRemaining)}</span>
                 <X className="w-3 h-3" />
@@ -267,7 +242,7 @@ export default function SomnoStudio() {
           </div>
 
           {/* Master Volume */}
-          <div className="hidden sm:flex items-center gap-2 bg-[#12141c] px-3 py-1.5 rounded-xl border border-[#1f2430]">
+          <div className="hidden md:flex items-center gap-2 bg-[#12141c] px-3 py-1.5 rounded-xl border border-[#1f2430]">
             <span className="text-xs text-gray-400 font-medium">Master</span>
             <input
               type="range"
@@ -284,21 +259,39 @@ export default function SomnoStudio() {
           {/* Master Play Button */}
           <button
             onClick={toggleMasterPlay}
-            className={`flex items-center gap-2 px-3 md:px-5 py-2 rounded-xl font-semibold text-xs md:text-sm transition-all shadow-lg ${
+            className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-5 py-2 rounded-xl font-semibold text-xs md:text-sm transition-all shadow-lg ${
               isPlaying
                 ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30'
                 : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30'
             }`}
           >
             {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-            <span className="hidden xs:inline">{isPlaying ? 'Pause All' : 'Play All'}</span>
+            <span>{isPlaying ? 'Pause' : 'Play'}</span>
           </button>
         </div>
       </header>
 
-      {/* 11 Channel Strips Responsive Grid Container */}
-      <div className="flex-1 p-4 md:p-6 overflow-y-auto flex items-center justify-center">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-3 w-full max-w-[1600px] my-auto">
+      {/* Presets bar */}
+      <div className="bg-[#0f111a] px-4 py-2 border-b border-[#1f2430] flex items-center justify-center gap-2 overflow-x-auto shrink-0">
+        <span className="text-xs text-gray-400 font-medium whitespace-nowrap">Presets:</span>
+        {['Heavy Rain', 'Deep Sleep', 'Cabin Fire', 'Reset'].map(p => (
+          <button
+            key={p}
+            onClick={() => applyPreset(p)}
+            className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+              activePreset === p
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                : 'bg-[#161923] text-gray-300 hover:bg-[#1f2430]'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+
+      {/* Responsive Channels Container */}
+      <div className="flex-1 p-3 md:p-6 overflow-y-auto flex items-start lg:items-center justify-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-11 gap-3 w-full max-w-[1600px] my-auto">
           {CHANNELS_CONFIG.map(ch => {
             const state = channels[ch.id] || { volume: 0, muted: 0, active: false };
             const meter = meters[ch.id] || 0;
@@ -306,36 +299,36 @@ export default function SomnoStudio() {
             return (
               <div
                 key={ch.id}
-                className={`flex flex-col justify-between bg-[#12141c] border rounded-2xl p-3 transition-all min-h-[280px] ${
+                className={`flex flex-col justify-between bg-[#12141c] border rounded-2xl p-4 lg:p-3 transition-all ${
                   state.active
                     ? 'border-blue-500/50 shadow-lg shadow-blue-500/10 bg-gradient-to-b from-[#161a29] to-[#12141c]'
-                    : 'border-[#1f2430] opacity-80 hover:opacity-100'
+                    : 'border-[#1f2430] opacity-85 hover:opacity-100'
                 }`}
               >
                 {/* Channel Header */}
                 <div className="flex items-center justify-between pb-2 border-b border-[#1f2430]">
-                  <span className="text-xs font-bold tracking-tight text-white truncate max-w-[85px]">{ch.name}</span>
+                  <span className="text-sm lg:text-xs font-bold tracking-tight text-white truncate">{ch.name}</span>
                   <button
                     onClick={() => toggleChannelActive(ch.id)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all ${
+                    className={`w-3.5 h-3.5 lg:w-2.5 lg:h-2.5 rounded-full transition-all ${
                       state.active ? 'bg-blue-500 shadow-md shadow-blue-500' : 'bg-gray-600'
                     }`}
                     title="Toggle Channel"
                   />
                 </div>
 
-                {/* Vertical Fader & VU Meter Section */}
-                <div className="flex-1 flex items-center justify-center gap-3 py-3">
-                  {/* VU Meter Bar */}
-                  <div className="w-2 h-36 bg-[#08090d] rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-[#1f2430]">
+                {/* Fader & VU Meter Section: Horizontal on mobile, Vertical on Desktop */}
+                <div className="flex items-center lg:flex-col justify-between lg:justify-center gap-4 lg:gap-3 py-4 lg:py-3">
+                  {/* VU Meter */}
+                  <div className="w-full lg:w-2 h-2 lg:h-36 bg-[#08090d] rounded-full overflow-hidden flex lg:flex-col justify-end p-0.5 border border-[#1f2430]">
                     <div
-                      className="w-full bg-gradient-to-t from-blue-500 via-emerald-400 to-amber-400 rounded-full transition-all duration-75"
-                      style={{ height: `${meter}%` }}
+                      className="h-full lg:h-full w-full bg-gradient-to-r lg:bg-gradient-to-t from-blue-500 via-emerald-400 to-amber-400 rounded-full transition-all duration-75"
+                      style={{ width: `${meter}%` }}
                     />
                   </div>
 
-                  {/* Vertical Fader */}
-                  <div className="flex flex-col items-center h-full justify-center">
+                  {/* Volume Slider */}
+                  <div className="flex-1 lg:flex-none flex items-center justify-center w-full">
                     <input
                       type="range"
                       min="0"
@@ -343,23 +336,21 @@ export default function SomnoStudio() {
                       step="0.01"
                       value={state.volume}
                       onChange={e => handleChannelVolChange(ch.id, parseFloat(e.target.value))}
-                      className="slider-vertical my-auto accent-blue-500"
+                      className="w-full lg:slider-vertical accent-blue-500 cursor-pointer h-2 lg:h-36 bg-gray-700 lg:bg-transparent rounded-lg"
                     />
                   </div>
                 </div>
 
                 {/* Percentage & Mute */}
-                <div className="space-y-2 pt-2 border-t border-[#1f2430]">
-                  <div className="text-center">
-                    <span className="text-[11px] font-mono text-gray-300 font-semibold">
-                      {Math.round(state.volume * 100)}%
-                    </span>
-                  </div>
+                <div className="space-y-2 pt-2 border-t border-[#1f2430] flex lg:flex-col items-center lg:items-stretch justify-between">
+                  <span className="text-xs font-mono text-gray-300 font-semibold">
+                    {Math.round(state.volume * 100)}%
+                  </span>
 
                   {/* Mute Button */}
                   <button
                     onClick={() => toggleMute(ch.id)}
-                    className={`w-full py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
+                    className={`px-4 lg:px-0 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
                       state.muted === 1
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                         : 'bg-[#1a1e29] hover:bg-[#252b3b] text-gray-300 border border-[#252b3b]'
@@ -376,10 +367,10 @@ export default function SomnoStudio() {
 
       {/* Footer */}
       <footer className="h-10 px-4 md:px-6 border-t border-[#1f2430] bg-[#0c0e15] flex items-center justify-between text-[11px] md:text-xs text-gray-500 shrink-0">
-        <div>Somno Studio © 2026 — Real Ambient Recordings</div>
+        <div>Somno Studio © 2026 — Local Audio Recordings</div>
         <div className="flex items-center gap-4">
-          <span className="hidden sm:inline">Real Audio Samples • Responsive Design</span>
-          <span className="text-blue-400 font-mono">v1.1.0</span>
+          <span className="hidden sm:inline">100% Responsive Mobile & Desktop</span>
+          <span className="text-blue-400 font-mono">v1.2.0</span>
         </div>
       </footer>
     </main>
