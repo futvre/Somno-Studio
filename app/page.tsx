@@ -9,7 +9,6 @@ interface ChannelState {
   muted: number; // 0 or 1
   active: boolean;
 }
-
 export default function SomnoStudio() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [masterVol, setMasterVol] = useState<number>(0.8);
