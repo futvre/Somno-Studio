@@ -1,4 +1,4 @@
-// Web Audio API Synthesis Engine for Somno Studio
+// Web Audio API Synthesis Engine for Somno Studio - Optimized for Warm, Natural Sound
 
 export interface ChannelConfig {
   id: string;
@@ -9,20 +9,20 @@ export interface ChannelConfig {
   oscType?: OscillatorType;
   filterFreq?: number;
   filterType?: BiquadFilterType;
-  modFreq?: number;
+  filterQ?: number;
 }
 
 export const CHANNELS_CONFIG: ChannelConfig[] = [
-  { id: 'rain', name: 'Heavy Rain', type: 'noise', noiseType: 'pink', filterFreq: 1000, filterType: 'bandpass' },
+  { id: 'rain', name: 'Heavy Rain', type: 'noise', noiseType: 'pink', filterFreq: 1000, filterType: 'lowpass', filterQ: 1 },
   { id: 'sleep', name: 'Deep Sleep', type: 'oscillator', freq: 55, oscType: 'sine' },
-  { id: 'ocean', name: 'Ocean Waves', type: 'noise', noiseType: 'pink', filterFreq: 400, filterType: 'lowpass' },
-  { id: 'fire', name: 'Cabin Fire', type: 'noise', noiseType: 'fire', filterFreq: 1500, filterType: 'bandpass' },
+  { id: 'ocean', name: 'Ocean Waves', type: 'noise', noiseType: 'pink', filterFreq: 300, filterType: 'lowpass', filterQ: 2 },
+  { id: 'fire', name: 'Cabin Fire', type: 'noise', noiseType: 'fire', filterFreq: 1200, filterType: 'bandpass', filterQ: 1 },
   { id: 'cosmic', name: 'Cosmic Drone', type: 'oscillator', freq: 110, oscType: 'triangle' },
-  { id: 'forest', name: 'Forest Night', type: 'noise', noiseType: 'white', filterFreq: 4000, filterType: 'highpass' },
-  { id: 'wind', name: 'Soft Wind', type: 'noise', noiseType: 'brown', filterFreq: 300, filterType: 'lowpass' },
+  { id: 'forest', name: 'Forest Night', type: 'noise', noiseType: 'pink', filterFreq: 2200, filterType: 'bandpass', filterQ: 1.5 },
+  { id: 'wind', name: 'Soft Wind', type: 'noise', noiseType: 'brown', filterFreq: 200, filterType: 'lowpass', filterQ: 1 },
   { id: 'bowl', name: 'Tibetan Bowl', type: 'oscillator', freq: 216, oscType: 'sine' },
-  { id: 'vinyl', name: 'Vinyl Crackle', type: 'noise', noiseType: 'vinyl', filterFreq: 3000, filterType: 'bandpass' },
-  { id: 'stream', name: 'River Stream', type: 'noise', noiseType: 'pink', filterFreq: 1800, filterType: 'lowpass' },
+  { id: 'vinyl', name: 'Vinyl Crackle', type: 'noise', noiseType: 'vinyl', filterFreq: 2000, filterType: 'bandpass', filterQ: 1 },
+  { id: 'stream', name: 'River Stream', type: 'noise', noiseType: 'pink', filterFreq: 900, filterType: 'bandpass', filterQ: 1.5 },
   { id: 'theta', name: 'Theta Waves', type: 'binaural', freq: 200 },
 ];
 
@@ -71,12 +71,6 @@ export class SomnoAudioEngine {
     node.gain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.05);
   }
 
-  public setChannelPan(id: string, pan: number) {
-    const node = this.channelNodes.get(id);
-    if (!node || !node.panner) return;
-    node.panner.pan.setTargetAtTime(pan, this.ctx?.currentTime || 0, 0.05);
-  }
-
   public setChannelMute(id: string, muted: boolean) {
     const node = this.channelNodes.get(id);
     if (!node || !this.ctx) return;
@@ -107,7 +101,6 @@ export class SomnoAudioEngine {
     const sourceNodes: AudioNode[] = [];
 
     if (config.type === 'noise' || config.noiseType) {
-      // Generate 5s noise buffer
       const bufferSize = this.ctx.sampleRate * 5;
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
@@ -123,20 +116,19 @@ export class SomnoAudioEngine {
           b4 = 0.55000 * b4 + white * 0.5329522;
           b5 = -0.7616 * b5 - white * 0.0168980;
           data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-          data[i] *= 0.11;
+          data[i] *= 0.04; // Gentle multiplier for warm, smooth sound
           b6 = white * 0.115926;
         } else if (config.noiseType === 'brown') {
           b0 = (b0 + (0.02 * white)) / 1.02;
-          data[i] = b0 * 3.5;
+          data[i] = b0 * 2.0;
         } else if (config.noiseType === 'fire') {
-          // Crackle bursts
           const noise = Math.random() * 2 - 1;
-          data[i] = Math.random() > 0.995 ? noise * 2 : noise * 0.1;
+          data[i] = Math.random() > 0.997 ? noise * 1.5 : noise * 0.05;
         } else if (config.noiseType === 'vinyl') {
-          const pop = Math.random() > 0.998 ? (Math.random() * 2 - 1) * 5 : (Math.random() * 2 - 1) * 0.05;
+          const pop = Math.random() > 0.999 ? (Math.random() * 2 - 1) * 3 : (Math.random() * 2 - 1) * 0.02;
           data[i] = pop;
         } else {
-          data[i] = white * 0.2;
+          data[i] = white * 0.04;
         }
       }
 
@@ -144,17 +136,16 @@ export class SomnoAudioEngine {
       noiseSource.buffer = buffer;
       noiseSource.loop = true;
 
-      if (config.filterFreq && config.filterType) {
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = config.filterType;
-        filter.frequency.value = config.filterFreq;
-        noiseSource.connect(filter);
-        filter.connect(gainNode);
-        sourceNodes.push(noiseSource, filter);
-      } else {
-        noiseSource.connect(gainNode);
-        sourceNodes.push(noiseSource);
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = config.filterType || 'lowpass';
+      filter.frequency.value = config.filterFreq || 1000;
+      if (config.filterQ) {
+        filter.Q.value = config.filterQ;
       }
+
+      noiseSource.connect(filter);
+      filter.connect(gainNode);
+      sourceNodes.push(noiseSource, filter);
 
       noiseSource.start();
     } else if (config.type === 'oscillator') {
@@ -164,25 +155,24 @@ export class SomnoAudioEngine {
       
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.value = 800;
+      filter.frequency.value = 400;
 
       osc.connect(filter);
       filter.connect(gainNode);
       osc.start();
       sourceNodes.push(osc, filter);
     } else if (config.type === 'binaural') {
-      // Create dual oscillators for binaural beat (e.g. 200Hz left, 206Hz right)
       const merger = this.ctx.createChannelMerger(2);
       const oscL = this.ctx.createOscillator();
       const oscR = this.ctx.createOscillator();
       
       oscL.frequency.value = config.freq || 200;
-      oscR.frequency.value = (config.freq || 200) + 6; // 6Hz Theta difference
+      oscR.frequency.value = (config.freq || 200) + 6;
 
       const gainL = this.ctx.createGain();
       const gainR = this.ctx.createGain();
-      gainL.gain.value = 0.5;
-      gainR.gain.value = 0.5;
+      gainL.gain.value = 0.4;
+      gainR.gain.value = 0.4;
 
       oscL.connect(gainL);
       oscR.connect(gainR);
@@ -218,7 +208,6 @@ export class SomnoAudioEngine {
   public getMeterLevel(id: string): number {
     const node = this.channelNodes.get(id);
     if (!node || !this.ctx) return 0;
-    // Return mock dynamic meter based on gain
     return node.gain.gain.value > 0 ? Math.min(100, Math.floor(node.gain.gain.value * 85 + Math.random() * 15)) : 0;
   }
 }
