@@ -85,14 +85,16 @@ export default function SomnoStudio() {
   }, [sleepTimer]);
 
   const toggleMasterPlay = () => {
+    audioEngine.init();
     const nextState = !isPlaying;
     setIsPlaying(nextState);
 
     if (nextState) {
+      audioEngine.setMasterVolume(masterVol);
       CHANNELS_CONFIG.forEach(ch => {
         const state = channels[ch.id];
         if (state.active && state.volume > 0) {
-          audioEngine.startChannel(ch, state.volume, masterVol);
+          audioEngine.startChannel(ch, state.volume);
         }
       });
     } else {
@@ -102,14 +104,7 @@ export default function SomnoStudio() {
 
   const handleMasterVolChange = (val: number) => {
     setMasterVol(val);
-    if (isPlaying) {
-      CHANNELS_CONFIG.forEach(ch => {
-        const state = channels[ch.id];
-        if (state.active) {
-          audioEngine.setChannelVolume(ch.id, state.volume, val);
-        }
-      });
-    }
+    audioEngine.setMasterVolume(val);
   };
 
   const handleChannelVolChange = (id: string, val: number) => {
@@ -118,13 +113,10 @@ export default function SomnoStudio() {
       [id]: { ...prev[id], volume: val, active: val > 0 ? true : prev[id].active }
     }));
     if (isPlaying) {
+      audioEngine.setChannelVolume(id, val);
       const config = CHANNELS_CONFIG.find(c => c.id === id);
-      if (config) {
-        if (!channels[id].active && val > 0) {
-          audioEngine.startChannel(config, val, masterVol);
-        } else {
-          audioEngine.setChannelVolume(id, val, masterVol);
-        }
+      if (config && !channels[id].active && val > 0) {
+        audioEngine.startChannel(config, val);
       }
     }
   };
@@ -143,7 +135,7 @@ export default function SomnoStudio() {
       const config = CHANNELS_CONFIG.find(c => c.id === id);
       if (config) {
         if (newActive) {
-          audioEngine.startChannel(config, newVol, masterVol);
+          audioEngine.startChannel(config, newVol);
         } else {
           audioEngine.stopChannel(id);
         }
@@ -158,12 +150,14 @@ export default function SomnoStudio() {
       ...prev,
       [id]: { ...prev[id], muted: newMuted }
     }));
-    audioEngine.setChannelMute(id, newMuted === 1, current.volume, masterVol);
+    audioEngine.setChannelMute(id, newMuted === 1, current.volume);
   };
 
   const applyPreset = (presetName: string) => {
+    audioEngine.init();
     setActivePreset(presetName);
     setIsPlaying(true);
+    audioEngine.setMasterVolume(masterVol);
     audioEngine.stopAll();
 
     const newChannels = { ...channels };
@@ -172,16 +166,14 @@ export default function SomnoStudio() {
     });
 
     let targetIds: string[] = [];
-    if (presetName === 'Heavy Rain') targetIds = ['rain', 'wind', 'stream'];
-    else if (presetName === 'Deep Sleep') targetIds = ['sleep', 'ocean', 'theta'];
-    else if (presetName === 'Cabin Fire') targetIds = ['fire', 'rain', 'vinyl'];
-    else if (presetName === 'Reset') targetIds = ['bowl', 'ocean'];
+    if (presetName === 'Rainstorm') targetIds = ['rain', 'ocean'];
+    else if (presetName === 'Relaxing Night') targetIds = ['ocean', 'fire'];
 
     targetIds.forEach(id => {
       newChannels[id] = { active: true, volume: 0.7, muted: 0 };
       const config = CHANNELS_CONFIG.find(c => c.id === id);
       if (config) {
-        audioEngine.startChannel(config, 0.7, masterVol);
+        audioEngine.startChannel(config, 0.7);
       }
     });
 
@@ -204,7 +196,7 @@ export default function SomnoStudio() {
           </div>
           <div>
             <h1 className="text-sm md:text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              Somno Studio <span className="text-[10px] md:text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v1.2</span>
+              Somno Studio <span className="text-[10px] md:text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v1.3</span>
             </h1>
             <p className="text-[11px] text-gray-400 hidden sm:block">Ambient Audio Mixing Console</p>
           </div>
@@ -274,7 +266,7 @@ export default function SomnoStudio() {
       {/* Presets bar */}
       <div className="bg-[#0f111a] px-4 py-2 border-b border-[#1f2430] flex items-center justify-center gap-2 overflow-x-auto shrink-0">
         <span className="text-xs text-gray-400 font-medium whitespace-nowrap">Presets:</span>
-        {['Heavy Rain', 'Deep Sleep', 'Cabin Fire', 'Reset'].map(p => (
+        {['Rainstorm', 'Relaxing Night'].map(p => (
           <button
             key={p}
             onClick={() => applyPreset(p)}
@@ -289,9 +281,9 @@ export default function SomnoStudio() {
         ))}
       </div>
 
-      {/* Responsive Channels Container */}
-      <div className="flex-1 p-3 md:p-6 overflow-y-auto flex items-start lg:items-center justify-center">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-11 gap-3 w-full max-w-[1600px] my-auto">
+      {/* Responsive Channels Container (3 Channels) */}
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto flex items-center justify-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-4xl my-auto">
           {CHANNELS_CONFIG.map(ch => {
             const state = channels[ch.id] || { volume: 0, muted: 0, active: false };
             const meter = meters[ch.id] || 0;
@@ -299,28 +291,28 @@ export default function SomnoStudio() {
             return (
               <div
                 key={ch.id}
-                className={`flex flex-col justify-between bg-[#12141c] border rounded-2xl p-4 lg:p-3 transition-all ${
+                className={`flex flex-col justify-between bg-[#12141c] border rounded-2xl p-5 transition-all ${
                   state.active
-                    ? 'border-blue-500/50 shadow-lg shadow-blue-500/10 bg-gradient-to-b from-[#161a29] to-[#12141c]'
+                    ? 'border-blue-500/50 shadow-xl shadow-blue-500/10 bg-gradient-to-b from-[#161a29] to-[#12141c]'
                     : 'border-[#1f2430] opacity-85 hover:opacity-100'
                 }`}
               >
                 {/* Channel Header */}
-                <div className="flex items-center justify-between pb-2 border-b border-[#1f2430]">
-                  <span className="text-sm lg:text-xs font-bold tracking-tight text-white truncate">{ch.name}</span>
+                <div className="flex items-center justify-between pb-3 border-b border-[#1f2430]">
+                  <span className="text-sm font-bold tracking-tight text-white">{ch.name}</span>
                   <button
                     onClick={() => toggleChannelActive(ch.id)}
-                    className={`w-3.5 h-3.5 lg:w-2.5 lg:h-2.5 rounded-full transition-all ${
+                    className={`w-3.5 h-3.5 rounded-full transition-all ${
                       state.active ? 'bg-blue-500 shadow-md shadow-blue-500' : 'bg-gray-600'
                     }`}
                     title="Toggle Channel"
                   />
                 </div>
 
-                {/* Fader & VU Meter Section: Horizontal on mobile, Vertical on Desktop */}
-                <div className="flex items-center lg:flex-col justify-between lg:justify-center gap-4 lg:gap-3 py-4 lg:py-3">
+                {/* Fader & VU Meter Section */}
+                <div className="flex items-center lg:flex-col justify-between lg:justify-center gap-6 py-6">
                   {/* VU Meter */}
-                  <div className="w-full lg:w-2 h-2 lg:h-36 bg-[#08090d] rounded-full overflow-hidden flex lg:flex-col justify-end p-0.5 border border-[#1f2430]">
+                  <div className="w-full lg:w-3 h-3 lg:h-40 bg-[#08090d] rounded-full overflow-hidden flex lg:flex-col justify-end p-0.5 border border-[#1f2430]">
                     <div
                       className="h-full lg:h-full w-full bg-gradient-to-r lg:bg-gradient-to-t from-blue-500 via-emerald-400 to-amber-400 rounded-full transition-all duration-75"
                       style={{ width: `${meter}%` }}
@@ -336,13 +328,13 @@ export default function SomnoStudio() {
                       step="0.01"
                       value={state.volume}
                       onChange={e => handleChannelVolChange(ch.id, parseFloat(e.target.value))}
-                      className="w-full lg:slider-vertical accent-blue-500 cursor-pointer h-2 lg:h-36 bg-gray-700 lg:bg-transparent rounded-lg"
+                      className="w-full lg:slider-vertical accent-blue-500 cursor-pointer h-2 lg:h-40 bg-gray-700 lg:bg-transparent rounded-lg"
                     />
                   </div>
                 </div>
 
                 {/* Percentage & Mute */}
-                <div className="space-y-2 pt-2 border-t border-[#1f2430] flex lg:flex-col items-center lg:items-stretch justify-between">
+                <div className="space-y-3 pt-3 border-t border-[#1f2430] flex lg:flex-col items-center lg:items-stretch justify-between">
                   <span className="text-xs font-mono text-gray-300 font-semibold">
                     {Math.round(state.volume * 100)}%
                   </span>
@@ -350,7 +342,7 @@ export default function SomnoStudio() {
                   {/* Mute Button */}
                   <button
                     onClick={() => toggleMute(ch.id)}
-                    className={`px-4 lg:px-0 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
+                    className={`px-4 lg:px-0 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
                       state.muted === 1
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                         : 'bg-[#1a1e29] hover:bg-[#252b3b] text-gray-300 border border-[#252b3b]'
@@ -367,10 +359,10 @@ export default function SomnoStudio() {
 
       {/* Footer */}
       <footer className="h-10 px-4 md:px-6 border-t border-[#1f2430] bg-[#0c0e15] flex items-center justify-between text-[11px] md:text-xs text-gray-500 shrink-0">
-        <div>Somno Studio © 2026 — Local Audio Recordings</div>
+        <div>Somno Studio © 2026 — Seamless Web Audio Buffer</div>
         <div className="flex items-center gap-4">
-          <span className="hidden sm:inline">100% Responsive Mobile & Desktop</span>
-          <span className="text-blue-400 font-mono">v1.2.0</span>
+          <span className="hidden sm:inline">3 Core Sounds Testing</span>
+          <span className="text-blue-400 font-mono">v1.3.0</span>
         </div>
       </footer>
     </main>
