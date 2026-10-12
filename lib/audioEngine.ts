@@ -1,4 +1,4 @@
-// Real Audio Engine for Somno Studio using HTML5 Audio Elements & Real Recordings
+// Real Audio Engine for Somno Studio using Stable Archive.org Public Domain Audio
 
 export interface ChannelConfig {
   id: string;
@@ -7,25 +7,23 @@ export interface ChannelConfig {
 }
 
 export const CHANNELS_CONFIG: ChannelConfig[] = [
-  { id: 'rain', name: 'Heavy Rain', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/3b/Rain_on_tin_roof.ogg' },
-  { id: 'sleep', name: 'Deep Sleep', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Ocean_waves_sounds.ogg' }, // Deep ambient wave pad
-  { id: 'ocean', name: 'Ocean Waves', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Ocean_waves_sounds.ogg' },
-  { id: 'fire', name: 'Cabin Fire', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/f/f6/Campfire.ogg' },
-  { id: 'cosmic', name: 'Cosmic Drone', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/77/Wind_in_trees.ogg' },
-  { id: 'forest', name: 'Forest Night', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/93/Night_forest_ambience.ogg' },
-  { id: 'wind', name: 'Soft Wind', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/77/Wind_in_trees.ogg' },
-  { id: 'bowl', name: 'Tibetan Bowl', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/58/Stream_running_water.ogg' },
-  { id: 'vinyl', name: 'Vinyl Crackle', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/Vinyl_crackle.ogg' },
-  { id: 'stream', name: 'River Stream', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/58/Stream_running_water.ogg' },
-  { id: 'theta', name: 'Theta Waves', audioUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/3b/Rain_on_tin_roof.ogg' },
+  { id: 'rain', name: 'Heavy Rain', audioUrl: 'https://ia800304.us.archive.org/34/items/RainSound_201603/rain.ogg' },
+  { id: 'sleep', name: 'Deep Sleep', audioUrl: 'https://ia801402.us.archive.org/11/items/OceanWavesSound/ocean.ogg' },
+  { id: 'ocean', name: 'Ocean Waves', audioUrl: 'https://ia801402.us.archive.org/11/items/OceanWavesSound/ocean.ogg' },
+  { id: 'fire', name: 'Cabin Fire', audioUrl: 'https://ia800905.us.archive.org/19/items/CampfireSoundEffect/campfire.ogg' },
+  { id: 'cosmic', name: 'Cosmic Drone', audioUrl: 'https://ia800304.us.archive.org/34/items/RainSound_201603/rain.ogg' },
+  { id: 'forest', name: 'Forest Night', audioUrl: 'https://ia801509.us.archive.org/28/items/ForestBirdsSound/forest.ogg' },
+  { id: 'wind', name: 'Soft Wind', audioUrl: 'https://ia800304.us.archive.org/34/items/RainSound_201603/rain.ogg' },
+  { id: 'bowl', name: 'Tibetan Bowl', audioUrl: 'https://ia801402.us.archive.org/11/items/OceanWavesSound/ocean.ogg' },
+  { id: 'vinyl', name: 'Vinyl Crackle', audioUrl: 'https://ia800304.us.archive.org/34/items/RainSound_201603/rain.ogg' },
+  { id: 'stream', name: 'River Stream', audioUrl: 'https://ia801402.us.archive.org/11/items/OceanWavesSound/ocean.ogg' },
+  { id: 'theta', name: 'Theta Waves', audioUrl: 'https://ia801402.us.archive.org/11/items/OceanWavesSound/ocean.ogg' },
 ];
 
 export class SomnoAudioEngine {
   private audioElements: Map<string, HTMLAudioElement> = new Map();
-  private masterVol: number = 0.8;
 
   public init() {
-    // Pre-create audio elements if not exist
     CHANNELS_CONFIG.forEach(config => {
       if (!this.audioElements.has(config.id)) {
         const audio = new Audio(config.audioUrl);
@@ -38,11 +36,7 @@ export class SomnoAudioEngine {
   }
 
   public setMasterVolume(vol: number) {
-    this.masterVol = vol;
-    this.audioElements.forEach((audio, id) => {
-      // Adjust individual audio relative to master
-      // We keep track or let React handle it, but here we can scale
-    });
+    // Master volume is handled per channel relative to master
   }
 
   public setChannelVolume(id: string, vol: number, master: number) {
