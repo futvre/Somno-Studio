@@ -1,4 +1,4 @@
-// Local Audio Engine for Somno Studio using local WAV files in /public/audio/
+// Advanced Web Audio Buffer Engine for Somno Studio - Seamless Looping & Zero Lag
 
 export interface ChannelConfig {
   id: string;
@@ -21,63 +21,116 @@ export const CHANNELS_CONFIG: ChannelConfig[] = [
 ];
 
 export class SomnoAudioEngine {
-  private audioElements: Map<string, HTMLAudioElement> = new Map();
+  private ctx: AudioContext | null = null;
+  private masterGain: GainNode | null = null;
+  private buffers: Map<string, AudioBuffer> = new Map();
+  private activeSources: Map<string, { source: AudioBufferSourceNode; gain: GainNode }> = new Map();
+  private masterVol: number = 0.8;
 
   public init() {
-    CHANNELS_CONFIG.forEach(config => {
-      if (!this.audioElements.has(config.id)) {
-        const audio = new Audio(config.audioUrl);
-        audio.loop = true;
-        audio.volume = 0;
-        audio.preload = 'auto';
-        this.audioElements.set(config.id, audio);
-      }
-    });
+    if (!this.ctx) {
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.ctx = new AudioContextClass();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = this.masterVol;
+      this.masterGain.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+    this.preloadBuffers();
   }
 
-  public setChannelVolume(id: string, vol: number, master: number) {
-    this.init();
-    const audio = this.audioElements.get(id);
-    if (!audio) return;
-    audio.volume = Math.max(0, Math.min(1, vol * master));
-    if (vol > 0 && audio.paused) {
-      audio.play().catch(() => {});
-    } else if (vol === 0 && !audio.paused) {
-      audio.pause();
+  private async preloadBuffers() {
+    if (!this.ctx) return;
+    for (const config of CHANNELS_CONFIG) {
+      if (!this.buffers.has(config.id)) {
+        try {
+          const response = await fetch(config.audioUrl);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+          this.buffers.set(config.id, audioBuffer);
+        } catch (e) {
+          console.error(`Error loading buffer for ${config.id}:`, e);
+        }
+      }
     }
   }
 
-  public setChannelMute(id: string, muted: boolean, currentVol: number, master: number) {
-    const audio = this.audioElements.get(id);
-    if (!audio) return;
-    audio.volume = muted ? 0 : currentVol * master;
+  public setMasterVolume(vol: number) {
+    this.masterVol = vol;
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.05);
+    }
   }
 
-  public startChannel(config: ChannelConfig, initialVol: number, master: number) {
+  public setChannelVolume(id: string, vol: number) {
+    const active = this.activeSources.get(id);
+    if (!active || !this.ctx) return;
+    active.gain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.05);
+  }
+
+  public setChannelMute(id: string, muted: boolean, currentVol: number) {
+    const active = this.activeSources.get(id);
+    if (!active || !this.ctx) return;
+    active.gain.gain.setTargetAtTime(muted ? 0 : currentVol, this.ctx.currentTime, 0.05);
+  }
+
+  public async startChannel(config: ChannelConfig, initialVol: number) {
     this.init();
-    const audio = this.audioElements.get(config.id);
-    if (!audio) return;
-    audio.volume = initialVol * master;
-    audio.play().catch(() => {});
+    if (!this.ctx || !this.masterGain) return;
+
+    // Stop existing if any
+    this.stopChannel(config.id);
+
+    // Ensure buffer is loaded
+    let buffer = this.buffers.get(config.id);
+    if (!buffer) {
+      try {
+        const response = await fetch(config.audioUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        buffer = await this.ctx.decodeAudioData(arrayBuffer);
+        this.buffers.set(config.id, buffer);
+      } catch (e) {
+        return;
+      }
+    }
+
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true; // Seamless infinite looping with Web Audio API
+
+    const gainNode = this.ctx.createGain();
+    gainNode.gain.value = initialVol;
+
+    source.connect(gainNode);
+    gainNode.connect(this.masterGain);
+
+    source.start(0);
+    this.activeSources.set(config.id, { source, gain: gainNode });
   }
 
   public stopChannel(id: string) {
-    const audio = this.audioElements.get(id);
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
+    const active = this.activeSources.get(id);
+    if (active) {
+      try {
+        active.source.stop();
+        active.source.disconnect();
+        active.gain.disconnect();
+      } catch {}
+      this.activeSources.delete(id);
+    }
   }
 
   public stopAll() {
-    this.audioElements.forEach(audio => {
-      audio.pause();
-      audio.currentTime = 0;
+    this.activeSources.forEach((_, id) => {
+      this.stopChannel(id);
     });
   }
 
   public getMeterLevel(id: string, volume: number): number {
-    const audio = this.audioElements.get(id);
-    if (!audio || audio.paused || volume === 0) return 0;
+    const active = this.activeSources.get(id);
+    if (!active || volume === 0) return 0;
     return Math.min(100, Math.floor(volume * 80 + Math.random() * 20));
   }
 }
