@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, RotateCcw, Moon, Sliders, Shield, Sparkles, Clock, Music, X } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Sliders, Clock, X } from 'lucide-react';
 import { CHANNELS_CONFIG, audioEngine } from '@/lib/audioEngine';
 
 interface ChannelState {
   volume: number;
-  pan: number;
   muted: number; // 0 or 1
   active: boolean;
 }
@@ -17,7 +16,7 @@ export default function SomnoStudio() {
   const [channels, setChannels] = useState<Record<string, ChannelState>>(() => {
     const initial: Record<string, ChannelState> = {};
     CHANNELS_CONFIG.forEach(ch => {
-      initial[ch.id] = { volume: 0, pan: 0, muted: 0, active: false };
+      initial[ch.id] = { volume: 0, muted: 0, active: false };
     });
     return initial;
   });
@@ -99,7 +98,7 @@ export default function SomnoStudio() {
       CHANNELS_CONFIG.forEach(ch => {
         const state = channels[ch.id];
         if (state.active) {
-          audioEngine.startChannel(ch, state.volume, state.pan);
+          audioEngine.startChannel(ch, state.volume, 0);
         }
       });
     } else {
@@ -123,20 +122,12 @@ export default function SomnoStudio() {
       const config = CHANNELS_CONFIG.find(c => c.id === id);
       if (config) {
         if (!channels[id].active && val > 0) {
-          audioEngine.startChannel(config, val, channels[id].pan);
+          audioEngine.startChannel(config, val, 0);
         } else {
           audioEngine.setChannelVolume(id, val);
         }
       }
     }
-  };
-
-  const handleChannelPanChange = (id: string, pan: number) => {
-    setChannels(prev => ({
-      ...prev,
-      [id]: { ...prev[id], pan }
-    }));
-    audioEngine.setChannelPan(id, pan);
   };
 
   const toggleChannelActive = (id: string) => {
@@ -153,7 +144,7 @@ export default function SomnoStudio() {
       const config = CHANNELS_CONFIG.find(c => c.id === id);
       if (config) {
         if (newActive) {
-          audioEngine.startChannel(config, newVol, current.pan);
+          audioEngine.startChannel(config, newVol, 0);
         } else {
           audioEngine.stopChannel(id);
         }
@@ -188,7 +179,7 @@ export default function SomnoStudio() {
     else if (presetName === 'Reset') targetIds = ['bowl', 'ocean'];
 
     targetIds.forEach(id => {
-      newChannels[id] = { active: true, volume: 0.7, pan: 0, muted: 0 };
+      newChannels[id] = { active: true, volume: 0.7, muted: 0 };
       const config = CHANNELS_CONFIG.find(c => c.id === id);
       if (config) {
         audioEngine.startChannel(config, 0.7, 0);
@@ -247,7 +238,7 @@ export default function SomnoStudio() {
             ))}
           </div>
 
-          {/* Sleep Timer (Visible on all screens with scroll/wrap if needed) */}
+          {/* Sleep Timer */}
           <div className="flex items-center gap-1 bg-[#12141c] p-1 rounded-xl border border-[#1f2430]">
             <Clock className="w-3.5 h-3.5 text-gray-400 ml-1 md:ml-2 hidden sm:block" />
             <span className="text-xs text-gray-400 font-medium hidden sm:inline">Timer:</span>
@@ -310,7 +301,7 @@ export default function SomnoStudio() {
       <div className="flex-1 p-2 md:p-4 overflow-x-auto overflow-y-hidden flex items-center justify-center">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-2 md:gap-3 w-full max-w-[1600px] h-full max-h-[calc(100vh-7.5rem)]">
           {CHANNELS_CONFIG.map(ch => {
-            const state = channels[ch.id] || { volume: 0, pan: 0, muted: 0, active: false };
+            const state = channels[ch.id] || { volume: 0, muted: 0, active: false };
             const meter = meters[ch.id] || 0;
 
             return (
@@ -337,7 +328,7 @@ export default function SomnoStudio() {
                 {/* Vertical Fader & VU Meter Section */}
                 <div className="flex-1 flex items-center justify-center gap-2 md:gap-3 py-1 md:py-2">
                   {/* VU Meter Bar */}
-                  <div className="w-1.5 md:w-2 h-24 md:h-28 bg-[#08090d] rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-[#1f2430]">
+                  <div className="w-1.5 md:w-2 h-32 md:h-36 bg-[#08090d] rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-[#1f2430]">
                     <div
                       className="w-full bg-gradient-to-t from-blue-500 via-emerald-400 to-amber-400 rounded-full transition-all duration-75"
                       style={{ height: `${meter}%` }}
@@ -358,36 +349,18 @@ export default function SomnoStudio() {
                   </div>
                 </div>
 
-                {/* Percentage & Panning */}
-                <div className="space-y-1.5 md:space-y-2 pt-1.5 md:pt-2 border-t border-[#1f2430]">
+                {/* Percentage & Mute */}
+                <div className="space-y-2 pt-2 border-t border-[#1f2430]">
                   <div className="text-center">
                     <span className="text-[10px] md:text-[11px] font-mono text-gray-300 font-semibold">
                       {Math.round(state.volume * 100)}%
                     </span>
                   </div>
 
-                  {/* Stereo Pan Slider */}
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex justify-between text-[8px] md:text-[9px] text-gray-500 px-0.5 font-mono">
-                      <span>L</span>
-                      <span>C</span>
-                      <span>R</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="-1"
-                      max="1"
-                      step="0.1"
-                      value={state.pan}
-                      onChange={e => handleChannelPanChange(ch.id, parseFloat(e.target.value))}
-                      className="w-full accent-purple-500 h-1 bg-gray-700 rounded cursor-pointer"
-                    />
-                  </div>
-
                   {/* Mute Button */}
                   <button
                     onClick={() => toggleMute(ch.id)}
-                    className={`w-full py-1 md:py-1.5 rounded-lg text-[10px] md:text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
+                    className={`w-full py-1.5 rounded-lg text-[10px] md:text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
                       state.muted === 1
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                         : 'bg-[#1a1e29] hover:bg-[#252b3b] text-gray-300 border border-[#252b3b]'
