@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, Sliders, Clock, X } from 'lucide-react';
+import { Play, Pause, Sliders, Clock, X } from 'lucide-react';
 import { CHANNELS_CONFIG, audioEngine } from '@/lib/audioEngine';
 
 interface ChannelState {
@@ -203,9 +203,9 @@ export default function SomnoStudio() {
   };
 
   return (
-    <main className="h-screen w-screen flex flex-col bg-[#08090d] text-gray-200 select-none overflow-hidden">
+    <main className="min-h-screen w-screen flex flex-col bg-[#08090d] text-gray-200 select-none">
       {/* Header / Master Suite */}
-      <header className="h-16 px-4 md:px-6 border-b border-[#1f2430] bg-[#0c0e15] flex items-center justify-between shrink-0">
+      <header className="h-16 px-4 md:px-6 border-b border-[#1f2430] bg-[#0c0e15] flex items-center justify-between shrink-0 sticky top-0 z-20">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-lg shadow-blue-500/10">
             <Sliders className="w-5 h-5" />
@@ -298,8 +298,8 @@ export default function SomnoStudio() {
       </header>
 
       {/* 11 Channel Strips Grid Container */}
-      <div className="flex-1 p-2 md:p-4 overflow-x-auto overflow-y-hidden flex items-center justify-center">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-2 md:gap-3 w-full max-w-[1600px] h-full max-h-[calc(100vh-7.5rem)]">
+      <div className="flex-1 p-3 md:p-6 overflow-y-auto flex items-center justify-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-3 w-full max-w-[1600px] my-auto">
           {CHANNELS_CONFIG.map(ch => {
             const state = channels[ch.id] || { volume: 0, muted: 0, active: false };
             const meter = meters[ch.id] || 0;
@@ -307,15 +307,15 @@ export default function SomnoStudio() {
             return (
               <div
                 key={ch.id}
-                className={`flex flex-col justify-between bg-[#12141c] border rounded-2xl p-2.5 md:p-3 transition-all h-full ${
+                className={`flex flex-col justify-between bg-[#12141c] border rounded-2xl p-3 transition-all min-h-[280px] ${
                   state.active
                     ? 'border-blue-500/50 shadow-lg shadow-blue-500/10 bg-gradient-to-b from-[#161a29] to-[#12141c]'
                     : 'border-[#1f2430] opacity-80 hover:opacity-100'
                 }`}
               >
                 {/* Channel Header */}
-                <div className="flex items-center justify-between pb-1.5 md:pb-2 border-b border-[#1f2430]">
-                  <span className="text-[11px] md:text-xs font-bold tracking-tight text-white truncate max-w-[85px]">{ch.name}</span>
+                <div className="flex items-center justify-between pb-2 border-b border-[#1f2430]">
+                  <span className="text-xs font-bold tracking-tight text-white truncate max-w-[85px]">{ch.name}</span>
                   <button
                     onClick={() => toggleChannelActive(ch.id)}
                     className={`w-2.5 h-2.5 rounded-full transition-all ${
@@ -326,9 +326,9 @@ export default function SomnoStudio() {
                 </div>
 
                 {/* Vertical Fader & VU Meter Section */}
-                <div className="flex-1 flex items-center justify-center gap-2 md:gap-3 py-1 md:py-2">
+                <div className="flex-1 flex items-center justify-center gap-3 py-3">
                   {/* VU Meter Bar */}
-                  <div className="w-1.5 md:w-2 h-32 md:h-36 bg-[#08090d] rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-[#1f2430]">
+                  <div className="w-2 h-36 bg-[#08090d] rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-[#1f2430]">
                     <div
                       className="w-full bg-gradient-to-t from-blue-500 via-emerald-400 to-amber-400 rounded-full transition-all duration-75"
                       style={{ height: `${meter}%` }}
@@ -352,7 +352,7 @@ export default function SomnoStudio() {
                 {/* Percentage & Mute */}
                 <div className="space-y-2 pt-2 border-t border-[#1f2430]">
                   <div className="text-center">
-                    <span className="text-[10px] md:text-[11px] font-mono text-gray-300 font-semibold">
+                    <span className="text-[11px] font-mono text-gray-300 font-semibold">
                       {Math.round(state.volume * 100)}%
                     </span>
                   </div>
@@ -360,7 +360,7 @@ export default function SomnoStudio() {
                   {/* Mute Button */}
                   <button
                     onClick={() => toggleMute(ch.id)}
-                    className={`w-full py-1.5 rounded-lg text-[10px] md:text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
+                    className={`w-full py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
                       state.muted === 1
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                         : 'bg-[#1a1e29] hover:bg-[#252b3b] text-gray-300 border border-[#252b3b]'
@@ -376,7 +376,7 @@ export default function SomnoStudio() {
       </div>
 
       {/* Footer */}
-      <footer className="h-8 md:h-10 px-4 md:px-6 border-t border-[#1f2430] bg-[#0c0e15] flex items-center justify-between text-[11px] md:text-xs text-gray-500 shrink-0">
+      <footer className="h-10 px-4 md:px-6 border-t border-[#1f2430] bg-[#0c0e15] flex items-center justify-between text-[11px] md:text-xs text-gray-500 shrink-0">
         <div>Somno Studio © 2026 — Web Audio API Synthesizer</div>
         <div className="flex items-center gap-4">
           <span className="hidden sm:inline">Zero MP3s • Instant Playback • Offline Ready</span>
