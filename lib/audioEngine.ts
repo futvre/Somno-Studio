@@ -196,7 +196,7 @@ export class SomnoAudioEngine {
       sourceNodes.push(oscL, oscR, merger, gainL, gainR);
     }
 
-    this.channelNodes.set(id, { gain: gainNode, panner, sourceNodes });
+    this.channelNodes.set(config.id, { gain: gainNode, panner, sourceNodes });
   }
 
   public stopChannel(id: string) {
