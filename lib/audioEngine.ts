@@ -1,4 +1,4 @@
-// Advanced Web Audio Buffer Engine for Somno Studio - Seamless Looping & Zero Lag
+// Web Audio Buffer Engine for Somno Studio - 3 Core Channels & Seamless Looping
 
 export interface ChannelConfig {
   id: string;
@@ -8,16 +8,8 @@ export interface ChannelConfig {
 
 export const CHANNELS_CONFIG: ChannelConfig[] = [
   { id: 'rain', name: 'Heavy Rain', audioUrl: '/audio/rain.wav' },
-  { id: 'sleep', name: 'Deep Sleep', audioUrl: '/audio/sleep.wav' },
   { id: 'ocean', name: 'Ocean Waves', audioUrl: '/audio/ocean.wav' },
   { id: 'fire', name: 'Cabin Fire', audioUrl: '/audio/fire.wav' },
-  { id: 'cosmic', name: 'Cosmic Drone', audioUrl: '/audio/cosmic.wav' },
-  { id: 'forest', name: 'Forest Night', audioUrl: '/audio/forest.wav' },
-  { id: 'wind', name: 'Soft Wind', audioUrl: '/audio/wind.wav' },
-  { id: 'bowl', name: 'Tibetan Bowl', audioUrl: '/audio/bowl.wav' },
-  { id: 'vinyl', name: 'Vinyl Crackle', audioUrl: '/audio/vinyl.wav' },
-  { id: 'stream', name: 'River Stream', audioUrl: '/audio/stream.wav' },
-  { id: 'theta', name: 'Theta Waves', audioUrl: '/audio/theta.wav' },
 ];
 
 export class SomnoAudioEngine {
@@ -80,10 +72,8 @@ export class SomnoAudioEngine {
     this.init();
     if (!this.ctx || !this.masterGain) return;
 
-    // Stop existing if any
     this.stopChannel(config.id);
 
-    // Ensure buffer is loaded
     let buffer = this.buffers.get(config.id);
     if (!buffer) {
       try {
@@ -98,7 +88,7 @@ export class SomnoAudioEngine {
 
     const source = this.ctx.createBufferSource();
     source.buffer = buffer;
-    source.loop = true; // Seamless infinite looping with Web Audio API
+    source.loop = true; // Seamless infinite looping
 
     const gainNode = this.ctx.createGain();
     gainNode.gain.value = initialVol;
