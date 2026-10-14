@@ -112,8 +112,10 @@ export default function SomnoStudio() {
       ...prev,
       [id]: { ...prev[id], volume: val, active: val > 0 ? true : prev[id].active }
     }));
+    
+    audioEngine.setChannelVolume(id, val);
+
     if (isPlaying) {
-      audioEngine.setChannelVolume(id, val);
       const config = CHANNELS_CONFIG.find(c => c.id === id);
       if (config && !channels[id].active && val > 0) {
         audioEngine.startChannel(config, val);
@@ -122,6 +124,7 @@ export default function SomnoStudio() {
   };
 
   const toggleChannelActive = (id: string) => {
+    audioEngine.init();
     const current = channels[id];
     const newActive = !current.active;
     const newVol = newActive && current.volume === 0 ? 0.6 : current.volume;
@@ -166,8 +169,8 @@ export default function SomnoStudio() {
     });
 
     let targetIds: string[] = [];
-    if (presetName === 'Rainstorm') targetIds = ['rain', 'ocean'];
-    else if (presetName === 'Relaxing Night') targetIds = ['ocean', 'fire'];
+    if (presetName === 'Rainstorm') targetIds = ['rain', 'thunder'];
+    else if (presetName === 'Forest Birds') targetIds = ['birds', 'rain'];
 
     targetIds.forEach(id => {
       newChannels[id] = { active: true, volume: 0.7, muted: 0 };
@@ -266,7 +269,7 @@ export default function SomnoStudio() {
       {/* Presets bar */}
       <div className="bg-[#0f111a] px-4 py-2 border-b border-[#1f2430] flex items-center justify-center gap-2 overflow-x-auto shrink-0">
         <span className="text-xs text-gray-400 font-medium whitespace-nowrap">Presets:</span>
-        {['Rainstorm', 'Relaxing Night'].map(p => (
+        {['Rainstorm', 'Forest Birds'].map(p => (
           <button
             key={p}
             onClick={() => applyPreset(p)}
@@ -319,7 +322,7 @@ export default function SomnoStudio() {
                     />
                   </div>
 
-                  {/* Volume Slider */}
+                  {/* Volume Slider - with touch input handlers */}
                   <div className="flex-1 lg:flex-none flex items-center justify-center w-full">
                     <input
                       type="range"
@@ -327,8 +330,9 @@ export default function SomnoStudio() {
                       max="1"
                       step="0.01"
                       value={state.volume}
+                      onInput={e => handleChannelVolChange(ch.id, parseFloat((e.target as HTMLInputElement).value))}
                       onChange={e => handleChannelVolChange(ch.id, parseFloat(e.target.value))}
-                      className="w-full lg:slider-vertical accent-blue-500 cursor-pointer h-2 lg:h-40 bg-gray-700 lg:bg-transparent rounded-lg"
+                      className="w-full lg:slider-vertical accent-blue-500 cursor-pointer h-3 lg:h-40 bg-gray-700 lg:bg-transparent rounded-lg touch-none"
                     />
                   </div>
                 </div>
@@ -361,8 +365,8 @@ export default function SomnoStudio() {
       <footer className="h-10 px-4 md:px-6 border-t border-[#1f2430] bg-[#0c0e15] flex items-center justify-between text-[11px] md:text-xs text-gray-500 shrink-0">
         <div>Somno Studio © 2026 — Seamless Web Audio Buffer</div>
         <div className="flex items-center gap-4">
-          <span className="hidden sm:inline">3 Core Sounds Testing</span>
-          <span className="text-blue-400 font-mono">v1.3.0</span>
+          <span className="hidden sm:inline">Mobile Touch Optimized</span>
+          <span className="text-blue-400 font-mono">v1.3.1</span>
         </div>
       </footer>
     </main>
