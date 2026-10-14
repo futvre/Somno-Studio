@@ -1,11 +1,10 @@
-// Web Audio Buffer Engine for Somno Studio - 3 Core Channels & Seamless Looping
+// Web Audio Buffer Engine for Somno Studio - MP3 Support & Seamless Looping
 
 export interface ChannelConfig {
   id: string;
   name: string;
   audioUrl: string;
 }
-
 
 export const CHANNELS_CONFIG: ChannelConfig[] = [
   { id: 'rain', name: 'Heavy Rain', audioUrl: '/audio/rain.mp3' },
@@ -89,7 +88,7 @@ export class SomnoAudioEngine {
 
     const source = this.ctx.createBufferSource();
     source.buffer = buffer;
-    source.loop = true; // Seamless infinite looping
+    source.loop = true;
 
     const gainNode = this.ctx.createGain();
     gainNode.gain.value = initialVol;
