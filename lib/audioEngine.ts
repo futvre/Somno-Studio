@@ -6,10 +6,11 @@ export interface ChannelConfig {
   audioUrl: string;
 }
 
+
 export const CHANNELS_CONFIG: ChannelConfig[] = [
-  { id: 'rain', name: 'Heavy Rain', audioUrl: '/audio/rain.wav' },
-  { id: 'ocean', name: 'Ocean Waves', audioUrl: '/audio/ocean.wav' },
-  { id: 'fire', name: 'Cabin Fire', audioUrl: '/audio/fire.wav' },
+  { id: 'rain', name: 'Heavy Rain', audioUrl: '/audio/rain.mp3' },
+  { id: 'thunder', name: 'Thunderstorm', audioUrl: '/audio/thunder.mp3' },
+  { id: 'birds', name: 'Forest Birds', audioUrl: '/audio/birds.mp3' },
 ];
 
 export class SomnoAudioEngine {
