@@ -1,15 +1,16 @@
-// Web Audio Buffer Engine for Somno Studio - MP3 Support & Seamless Looping
+// Web Audio Buffer Engine for Somno Studio - Categories & Seamless Looping
 
 export interface ChannelConfig {
   id: string;
   name: string;
+  category: 'nature' | 'cozy' | 'sleep';
   audioUrl: string;
 }
 
 export const CHANNELS_CONFIG: ChannelConfig[] = [
-  { id: 'rain', name: 'Heavy Rain', audioUrl: '/audio/rain.mp3' },
-  { id: 'thunder', name: 'Thunderstorm', audioUrl: '/audio/thunder.mp3' },
-  { id: 'birds', name: 'Forest Birds', audioUrl: '/audio/birds.mp3' },
+  { id: 'rain', name: 'Heavy Rain', category: 'nature', audioUrl: '/audio/rain.mp3' },
+  { id: 'thunder', name: 'Thunderstorm', category: 'nature', audioUrl: '/audio/thunder.mp3' },
+  { id: 'birds', name: 'Forest Birds', category: 'nature', audioUrl: '/audio/birds.mp3' },
 ];
 
 export class SomnoAudioEngine {
