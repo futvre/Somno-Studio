@@ -10,9 +10,13 @@ interface ChannelState {
   active: boolean;
 }
 
+type CategoryType = 'all' | 'nature' | 'cozy' | 'sleep';
+
 export default function SomnoStudio() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [masterVol, setMasterVol] = useState<number>(0.8);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('all');
+  
   const [channels, setChannels] = useState<Record<string, ChannelState>>(() => {
     const initial: Record<string, ChannelState> = {};
     CHANNELS_CONFIG.forEach(ch => {
@@ -189,6 +193,11 @@ export default function SomnoStudio() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const filteredChannels = CHANNELS_CONFIG.filter(ch => {
+    if (selectedCategory === 'all') return true;
+    return ch.category === selectedCategory;
+  });
+
   return (
     <main className="min-h-screen w-full flex flex-col bg-[#08090d] text-gray-200 select-none">
       {/* Header / Master Suite */}
@@ -199,7 +208,7 @@ export default function SomnoStudio() {
           </div>
           <div>
             <h1 className="text-base md:text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              Somno Studio <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v2.0</span>
+              Somno Studio <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">v2.1</span>
             </h1>
             <p className="text-xs text-gray-400 hidden sm:block">Ambient Soundscapes</p>
           </div>
@@ -208,8 +217,8 @@ export default function SomnoStudio() {
         {/* Master Controls & Play */}
         <div className="flex items-center gap-2 md:gap-4">
           {/* Sleep Timer */}
-          <div className="flex items-center gap-1 bg-[#12141c] p-1 rounded-xl border border-[#1f2430]">
-            <Clock className="w-3.5 h-3.5 text-gray-400 ml-1 hidden sm:block" />
+          <div className="hidden sm:flex items-center gap-1 bg-[#12141c] p-1 rounded-xl border border-[#1f2430]">
+            <Clock className="w-3.5 h-3.5 text-gray-400 ml-1" />
             {[15, 30, 45, 60].map(m => (
               <button
                 key={m}
@@ -264,106 +273,136 @@ export default function SomnoStudio() {
         </div>
       </header>
 
-      {/* Presets bar */}
-      <div className="bg-[#0f111a] px-4 py-2.5 border-b border-[#1f2430] flex items-center justify-center gap-3 shrink-0">
-        <span className="text-xs text-gray-400 font-medium">Presets:</span>
-        {['Stormy Night', 'Peaceful Forest'].map(p => (
-          <button
-            key={p}
-            onClick={() => applyPreset(p)}
-            className={`px-3.5 py-1 rounded-lg text-xs font-medium transition-all ${
-              activePreset === p
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'bg-[#161923] text-gray-300 hover:bg-[#1f2430]'
-            }`}
-          >
-            {p}
-          </button>
-        ))}
+      {/* Presets & Category Filter Chips bar */}
+      <div className="bg-[#0f111a] px-4 py-2.5 border-b border-[#1f2430] flex flex-wrap items-center justify-between gap-3 shrink-0">
+        {/* Presets */}
+        <div className="flex items-center gap-2 overflow-x-auto py-1">
+          <span className="text-xs text-gray-400 font-medium whitespace-nowrap">Presets:</span>
+          {['Stormy Night', 'Peaceful Forest'].map(p => (
+            <button
+              key={p}
+              onClick={() => applyPreset(p)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                activePreset === p
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                  : 'bg-[#161923] text-gray-300 hover:bg-[#1f2430]'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+
+        {/* Category Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+          {[
+            { id: 'all', label: 'All Sounds' },
+            { id: 'nature', label: 'Nature & Weather' },
+            { id: 'cozy', label: 'Cozy & Indoor' },
+          ].map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id as CategoryType)}
+              className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                selectedCategory === cat.id
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  : 'bg-[#161923] text-gray-400 hover:text-white hover:bg-[#1f2430]'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Clean Stacked List Container (Mobile & Desktop friendly vertical list) */}
+      {/* Clean Stacked List Container with Filtered Categories */}
       <div className="flex-1 p-4 md:p-6 overflow-y-auto flex items-start justify-center">
         <div className="w-full max-w-2xl space-y-3.5 my-auto">
-          {CHANNELS_CONFIG.map(ch => {
-            const state = channels[ch.id] || { volume: 0, muted: 0, active: false };
-            const meter = meters[ch.id] || 0;
+          {filteredChannels.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 text-sm">
+              Δεν βρέθηκαν ήχοι σε αυτή την κατηγορία.
+            </div>
+          ) : (
+            filteredChannels.map(ch => {
+              const state = channels[ch.id] || { volume: 0, muted: 0, active: false };
+              const meter = meters[ch.id] || 0;
 
-            return (
-              <div
-                key={ch.id}
-                className={`relative flex flex-col bg-[#12141c] border rounded-2xl p-4 md:p-5 transition-all ${
-                  state.active
-                    ? 'border-blue-500/50 shadow-lg shadow-blue-500/10 bg-gradient-to-r from-[#161a29] to-[#12141c]'
-                    : 'border-[#1f2430] opacity-80 hover:opacity-100'
-                }`}
-              >
-                {/* Top Row: Name, Status & Power Toggle */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
+              return (
+                <div
+                  key={ch.id}
+                  className={`relative flex flex-col bg-[#12141c] border rounded-2xl p-4 md:p-5 transition-all ${
+                    state.active
+                      ? 'border-blue-500/50 shadow-lg shadow-blue-500/10 bg-gradient-to-r from-[#161a29] to-[#12141c]'
+                      : 'border-[#1f2430] opacity-80 hover:opacity-100'
+                  }`}
+                >
+                  {/* Top Row: Name, Status & Power Toggle */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => toggleChannelActive(ch.id)}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                          state.active
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                            : 'bg-[#1a1e29] text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        <Power className="w-5 h-5" />
+                      </button>
+                      <div>
+                        <h2 className="text-sm md:text-base font-bold text-white tracking-tight">{ch.name}</h2>
+                        <p className="text-[11px] text-gray-400 capitalize">
+                          {ch.category} • {state.active ? (state.muted === 1 ? 'Muted' : `Playing (${Math.round(state.volume * 100)}%)`) : 'Inactive'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Mute Button */}
                     <button
-                      onClick={() => toggleChannelActive(ch.id)}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                        state.active
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                          : 'bg-[#1a1e29] text-gray-400 hover:text-white'
+                      onClick={() => toggleMute(ch.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                        state.muted === 1
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-[#1a1e29] text-gray-300 hover:bg-[#252b3b] border border-[#252b3b]'
                       }`}
                     >
-                      <Power className="w-5 h-5" />
+                      {state.muted === 1 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                      <span>{state.muted === 1 ? 'MUTED' : 'MUTE'}</span>
                     </button>
-                    <div>
-                      <h2 className="text-sm md:text-base font-bold text-white tracking-tight">{ch.name}</h2>
-                      <p className="text-[11px] text-gray-400">
-                        {state.active ? (state.muted === 1 ? 'Muted' : `Playing (${Math.round(state.volume * 100)}%)`) : 'Inactive'}
-                      </p>
+                  </div>
+
+                  {/* Bottom Row: Wide Horizontal Volume Slider & VU Meter */}
+                  <div className="space-y-1.5 pt-2 border-t border-[#1f2430]">
+                    <div className="flex items-center justify-between text-xs font-mono text-gray-400">
+                      <span>Volume</span>
+                      <span className="text-blue-400 font-bold">{Math.round(state.volume * 100)}%</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={state.volume}
+                        onInput={e => handleChannelVolChange(ch.id, parseFloat((e.target as HTMLInputElement).value))}
+                        onChange={e => handleChannelVolChange(ch.id, parseFloat(e.target.value))}
+                        className="flex-1 accent-blue-500 cursor-pointer h-2.5 bg-gray-800 rounded-lg touch-none"
+                      />
+                    </div>
+
+                    {/* Micro VU Meter bar */}
+                    <div className="w-full h-1 bg-[#08090d] rounded-full overflow-hidden mt-2">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 via-emerald-400 to-amber-400 rounded-full transition-all duration-75"
+                        style={{ width: `${state.active && state.volume > 0 ? meter : 0}%` }}
+                      />
                     </div>
                   </div>
-
-                  {/* Mute Button */}
-                  <button
-                    onClick={() => toggleMute(ch.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                      state.muted === 1
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : 'bg-[#1a1e29] text-gray-300 hover:bg-[#252b3b] border border-[#252b3b]'
-                    }`}
-                  >
-                    {state.muted === 1 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                    <span>{state.muted === 1 ? 'MUTED' : 'MUTE'}</span>
-                  </button>
                 </div>
-
-                {/* Bottom Row: Wide Horizontal Volume Slider & VU Meter */}
-                <div className="space-y-1.5 pt-2 border-t border-[#1f2430]">
-                  <div className="flex items-center justify-between text-xs font-mono text-gray-400">
-                    <span>Volume</span>
-                    <span className="text-blue-400 font-bold">{Math.round(state.volume * 100)}%</span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={state.volume}
-                      onInput={e => handleChannelVolChange(ch.id, parseFloat((e.target as HTMLInputElement).value))}
-                      onChange={e => handleChannelVolChange(ch.id, parseFloat(e.target.value))}
-                      className="flex-1 accent-blue-500 cursor-pointer h-2.5 bg-gray-800 rounded-lg touch-none"
-                    />
-                  </div>
-
-                  {/* Micro VU Meter bar */}
-                  <div className="w-full h-1 bg-[#08090d] rounded-full overflow-hidden mt-2">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 via-emerald-400 to-amber-400 rounded-full transition-all duration-75"
-                      style={{ width: `${state.active && state.volume > 0 ? meter : 0}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -371,8 +410,8 @@ export default function SomnoStudio() {
       <footer className="h-10 px-4 md:px-6 border-t border-[#1f2430] bg-[#0c0e15] flex items-center justify-between text-[11px] md:text-xs text-gray-500 shrink-0">
         <div>Somno Studio © 2026 — Clean Stacked Mobile UX</div>
         <div className="flex items-center gap-4">
-          <span className="hidden sm:inline">Optimized for Touch & Mobile</span>
-          <span className="text-blue-400 font-mono">v2.0.0</span>
+          <span className="hidden sm:inline">Optimized with Category Filters</span>
+          <span className="text-blue-400 font-mono">v2.1.0</span>
         </div>
       </footer>
     </main>
